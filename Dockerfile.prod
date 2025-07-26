@@ -60,8 +60,16 @@ RUN echo "Generando código con Wire..." && \
 RUN echo "Construyendo frontend..." && \
     yarn build
 
-# Construir el backend
-RUN echo "Construyendo backend..." && \
+# Construir el binario principal de Grafana (servidor + CLI unificado)
+RUN echo "Construyendo grafana (binario unificado)..." && \
+    CGO_ENABLED=1 GOOS=linux go build \
+    -ldflags="-w -s -extldflags '-static'" \
+    -tags netgo,osusergo \
+    -o bin/grafana \
+    ./pkg/cmd/grafana
+
+# Construir grafana-server (mantenido por compatibilidad)
+RUN echo "Construyendo grafana-server..." && \
     CGO_ENABLED=1 GOOS=linux go build \
     -ldflags="-w -s -extldflags '-static'" \
     -tags netgo,osusergo \
@@ -111,6 +119,7 @@ RUN mkdir -p \
     /usr/share/grafana
 
 # Copiar binarios desde la etapa de construcción
+COPY --from=builder /tmp/grafana/bin/grafana /usr/share/grafana/bin/
 COPY --from=builder /tmp/grafana/bin/grafana-server /usr/share/grafana/bin/
 COPY --from=builder /tmp/grafana/bin/grafana-cli /usr/share/grafana/bin/
 
@@ -123,7 +132,8 @@ COPY --from=builder /tmp/grafana/tools /usr/share/grafana/tools
 COPY --from=builder /tmp/grafana/conf/defaults.ini /etc/grafana/grafana.ini
 
 # Crear enlaces simbólicos para facilitar el uso
-RUN ln -s /usr/share/grafana/bin/grafana-server /usr/local/bin/grafana-server && \
+RUN ln -s /usr/share/grafana/bin/grafana /usr/local/bin/grafana && \
+    ln -s /usr/share/grafana/bin/grafana-server /usr/local/bin/grafana-server && \
     ln -s /usr/share/grafana/bin/grafana-cli /usr/local/bin/grafana-cli
 
 # Variables de entorno
@@ -162,7 +172,8 @@ LABEL org.opencontainers.image.title="Sponzo Dashboard" \
       org.opencontainers.image.licenses="AGPL-3.0"
 
 # Comando por defecto
-CMD ["/usr/share/grafana/bin/grafana-server", \
+CMD ["/usr/share/grafana/bin/grafana", \
+     "server", \
      "--config=/etc/grafana/grafana.ini", \
      "--pidfile=/var/run/grafana-server.pid", \
      "--packaging=docker", \
