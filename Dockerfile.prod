@@ -45,14 +45,20 @@ WORKDIR /src
 ENV NODE_OPTIONS=--max_old_space_size=8000
 
 # Instalar dependencias del sistema para Node.js
-RUN apk add --no-cache make build-base python3
+RUN apk add --no-cache --virtual .build-deps \
+    make \
+    g++ \
+    python3 \
+    py3-pip \
+    git
 
 # Copiar archivos de configuración de Node.js
 COPY package.json project.json nx.json yarn.lock .yarnrc.yml ./
 COPY .yarn .yarn
 
 # Instalar dependencias de Node.js
-RUN yarn install --immutable
+RUN yarn install --immutable --inline-builds && \
+    apk del .build-deps
 
 # =====================================================
 # Etapa 3: Construir la aplicación
@@ -171,7 +177,6 @@ ENV GF_PATHS_PROVISIONING=/etc/grafana/provisioning
 # Configuraciones específicas de Sponzo
 ENV GF_SERVER_ROOT_URL=http://localhost:3001
 ENV GF_SECURITY_ADMIN_USER=admin
-ENV GF_SECURITY_ADMIN_PASSWORD=admin
 ENV GF_USERS_ALLOW_SIGN_UP=false
 ENV GF_ANALYTICS_REPORTING_ENABLED=false
 ENV GF_ANALYTICS_CHECK_FOR_UPDATES=false
@@ -193,9 +198,9 @@ LABEL org.opencontainers.image.title="Sponzo Dashboard" \
       org.opencontainers.image.url="https://github.com/partnia-tech/sponzo_grafana_whitelabel" \
       org.opencontainers.image.source="https://github.com/partnia-tech/sponzo_grafana_whitelabel" \
       org.opencontainers.image.licenses="AGPL-3.0" \
-      org.opencontainers.image.created="${BUILD_DATE}" \
-      org.opencontainers.image.revision="${VCS_REF}" \
-      org.opencontainers.image.version="${VERSION}"
+      org.opencontainers.image.created="$BUILD_DATE" \
+      org.opencontainers.image.revision="$VCS_REF" \
+      org.opencontainers.image.version="$VERSION"
 
 # Comando por defecto
 CMD ["/usr/share/grafana/bin/grafana-server", \
