@@ -116,6 +116,13 @@ jobs:
           - 5432:5432
 
     steps:
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
       - name: Test image
         run: |
           echo "🧪 Testing Sponzo Dashboard image..."
