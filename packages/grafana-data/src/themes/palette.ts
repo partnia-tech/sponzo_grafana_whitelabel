@@ -24,21 +24,31 @@ export const palette = {
   // from figma
   lightBorder1: '#e4e7e7',
 
-  blueDarkMain: '#3d71d9', // '#4165F5',
-  blueDarkText: '#6e9fff', // '#58a6ff', //'#33a2e5', // '#5790FF',
+  // === SPONZO BRAND COLORS ===
+  // Sponzo primary colors from brandbook
+  sponzoRaisinBlack: '#141423',
+  sponzoLightGreen: '#9AF073',
+  sponzoSqubusGreen: '#84E860',
+  sponzoElectricIndigo: '#5733FF',
+  sponzoCadetGray: '#9E80BB',
+
+  // Sponzo Dark Theme Colors
+  blueDarkMain: '#5733FF', // Using Electric Indigo as primary
+  blueDarkText: '#9AF073', // Using Light Green for text/accents
   redDarkMain: '#d10e5c',
   redDarkText: '#ff5286',
-  greenDarkMain: '#1a7f4b',
-  greenDarkText: '#6ccf8e',
+  greenDarkMain: '#84E860', // Using Sqbus Green
+  greenDarkText: '#9AF073', // Using Light Green
   orangeDarkMain: '#ff9900',
   orangeDarkText: '#fbad37',
 
-  blueLightMain: '#3871dc',
-  blueLightText: '#1f62e0',
+  // Sponzo Light Theme Colors  
+  blueLightMain: '#5733FF', // Using Electric Indigo as primary
+  blueLightText: '#141423', // Using Raisin Black for contrast
   redLightMain: '#e0226e',
   redLightText: '#cf0e5B',
-  greenLightMain: '#1b855e',
-  greenLightText: '#0a764e',
+  greenLightMain: '#84E860', // Using Sqbus Green
+  greenLightText: '#1a7f4b', // Darker green for contrast
   orangeLightMain: '#ff9900',
   orangeLightText: '#b5510d',
 };

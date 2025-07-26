@@ -48,7 +48,7 @@ export function NewsWrapper({ feedUrl }: NewsWrapperProps) {
           href="https://grafana.com/blog/"
           target="_blank"
           rel="noreferrer"
-          title={t('news.link-title', 'Go to Grafana labs blog')}
+          title={t('news.link-title', 'Ir al blog de Sponzo')}
         >
           <img src="public/img/grot-news.svg" alt="Grot reading news" />
         </a>

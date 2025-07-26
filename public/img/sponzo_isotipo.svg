@@ -1,0 +1,19 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Fondo circular con gradiente Sponzo -->
+  <defs>
+    <linearGradient id="sponzoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5733FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#9AF073;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Círculo de fondo -->
+  <circle cx="32" cy="32" r="30" fill="url(#sponzoGradient)" stroke="#141423" stroke-width="2"/>
+  
+  <!-- Letra S estilizada -->
+  <text x="32" y="42" font-family="Arial, sans-serif" font-size="32" font-weight="bold" 
+        text-anchor="middle" fill="#141423">S</text>
+        
+  <!-- Pequeño punto decorativo -->
+  <circle cx="45" cy="19" r="3" fill="#84E860"/>
+</svg>

@@ -145,17 +145,17 @@ class DarkColors implements ThemeColorsBase<Partial<ThemeRichColor>> {
   };
 
   background = {
-    canvas: palette.gray05,
-    primary: palette.gray10,
-    secondary: palette.gray15,
-    elevated: palette.gray15,
+    canvas: palette.sponzoRaisinBlack, // Using Sponzo Raisin Black for main background
+    primary: lighten(palette.sponzoRaisinBlack, 0.03), // Slightly lighter for panels
+    secondary: lighten(palette.sponzoRaisinBlack, 0.06), // Even lighter for cards
+    elevated: lighten(palette.sponzoRaisinBlack, 0.08), // For popovers/menus
   };
 
   action = {
-    hover: `rgba(${this.whiteBase}, 0.16)`,
-    selected: `rgba(${this.whiteBase}, 0.12)`,
-    selectedBorder: palette.orangeDarkMain,
-    focus: `rgba(${this.whiteBase}, 0.16)`,
+    hover: alpha(palette.sponzoLightGreen, 0.16), // Using Sponzo Light Green with opacity
+    selected: alpha(palette.sponzoSqubusGreen, 0.12), // Using Sponzo Sqbus Green for selection
+    selectedBorder: palette.sponzoLightGreen, // Light Green border for selected items
+    focus: alpha(palette.sponzoElectricIndigo, 0.16), // Electric Indigo for focus
     hoverOpacity: 0.08,
     disabledText: this.text.disabled,
     disabledBackground: `rgba(${this.whiteBase}, 0.04)`,
@@ -163,8 +163,8 @@ class DarkColors implements ThemeColorsBase<Partial<ThemeRichColor>> {
   };
 
   gradients = {
-    brandHorizontal: 'linear-gradient(270deg, #F55F3E 0%, #FF8833 100%)',
-    brandVertical: 'linear-gradient(0.01deg, #F55F3E 0.01%, #FF8833 99.99%)',
+    brandHorizontal: 'linear-gradient(270deg, #5733FF 0%, #9AF073 100%)', // Electric Indigo to Light Green
+    brandVertical: 'linear-gradient(0.01deg, #5733FF 0.01%, #84E860 99.99%)', // Electric Indigo to Sqbus Green
   };
 
   contrastThreshold = 3;
@@ -235,19 +235,19 @@ class LightColors implements ThemeColorsBase<Partial<ThemeRichColor>> {
   };
 
   action = {
-    hover: `rgba(${this.blackBase}, 0.12)`,
-    selected: `rgba(${this.blackBase}, 0.08)`,
-    selectedBorder: palette.orangeLightMain,
+    hover: alpha(palette.sponzoElectricIndigo, 0.12), // Electric Indigo for hover
+    selected: alpha(palette.sponzoSqubusGreen, 0.08), // Sqbus Green for selection
+    selectedBorder: palette.sponzoElectricIndigo, // Electric Indigo border for selected items
     hoverOpacity: 0.08,
-    focus: `rgba(${this.blackBase}, 0.12)`,
+    focus: alpha(palette.sponzoLightGreen, 0.12), // Light Green for focus
     disabledBackground: `rgba(${this.blackBase}, 0.04)`,
     disabledText: this.text.disabled,
     disabledOpacity: 0.38,
   };
 
   gradients = {
-    brandHorizontal: 'linear-gradient(90deg, #FF8833 0%, #F53E4C 100%)',
-    brandVertical: 'linear-gradient(0.01deg, #F53E4C -31.2%, #FF8833 113.07%)',
+    brandHorizontal: 'linear-gradient(90deg, #5733FF 0%, #9AF073 100%)', // Electric Indigo to Light Green
+    brandVertical: 'linear-gradient(0.01deg, #5733FF -31.2%, #84E860 113.07%)', // Electric Indigo to Sqbus Green
   };
 
   contrastThreshold = 3;

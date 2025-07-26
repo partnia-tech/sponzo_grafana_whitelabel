@@ -1,0 +1,209 @@
+# Dockerfile de producción para Sponzo Dashboard (White-label Grafana)
+# Este Dockerfile crea una imagen autocontenida lista para producción
+
+ARG GO_IMAGE=golang:1.24.4-alpine
+ARG JS_IMAGE=node:22-alpine
+ARG FINAL_IMAGE=alpine:3.19
+
+# Build arguments para metadatos
+ARG BUILD_DATE
+ARG VCS_REF
+ARG VERSION
+
+# =====================================================
+# Etapa 1: Preparar dependencias de Go
+# =====================================================
+FROM ${GO_IMAGE} AS go-deps
+
+WORKDIR /src
+
+# Instalar dependencias del sistema para Go
+RUN apk add --no-cache \
+    binutils-gold \
+    bash \
+    gcc g++ make git \
+    python3 \
+    build-base
+
+# Copiar archivos de configuración de Go
+COPY go.mod go.sum ./
+COPY .bingo .bingo
+
+# Descargar dependencias
+RUN go mod download
+
+# Instalar herramientas de desarrollo
+RUN go install github.com/bwplotka/bingo@latest
+
+# =====================================================
+# Etapa 2: Preparar dependencias de Node.js
+# =====================================================
+FROM ${JS_IMAGE} AS js-deps
+
+WORKDIR /src
+
+ENV NODE_OPTIONS=--max_old_space_size=8000
+
+# Instalar dependencias del sistema para Node.js
+RUN apk add --no-cache make build-base python3
+
+# Copiar archivos de configuración de Node.js
+COPY package.json project.json nx.json yarn.lock .yarnrc.yml ./
+COPY .yarn .yarn
+
+# Instalar dependencias de Node.js
+RUN yarn install --immutable
+
+# =====================================================
+# Etapa 3: Construir la aplicación
+# =====================================================
+FROM ${GO_IMAGE} AS builder
+
+WORKDIR /src
+
+# Instalar dependencias del sistema
+RUN apk add --no-cache \
+    binutils-gold \
+    bash \
+    gcc g++ make git \
+    python3 \
+    build-base \
+    nodejs \
+    npm \
+    yarn
+
+# Variables de entorno para construcción
+ENV NODE_OPTIONS=--max_old_space_size=8000
+ENV NODE_ENV=production
+
+# Copiar dependencias desde etapas anteriores
+COPY --from=go-deps /go/pkg/mod /go/pkg/mod
+COPY --from=go-deps /go/bin /go/bin
+COPY --from=js-deps /src/node_modules ./node_modules
+COPY --from=js-deps /src/.yarn ./.yarn
+
+# Copiar todo el código fuente
+COPY . .
+
+# Generar código con Wire
+RUN echo "Generando código con Wire..." && \
+    /go/bin/wire gen -tags oss ./pkg/server
+
+# Construir el frontend
+RUN echo "Construyendo frontend..." && \
+    yarn build
+
+# Construir el backend
+RUN echo "Construyendo backend..." && \
+    CGO_ENABLED=1 GOOS=linux go build \
+    -ldflags="-w -s -extldflags '-static'" \
+    -tags netgo,osusergo \
+    -o bin/grafana-server \
+    ./pkg/cmd/grafana-server
+
+# Construir grafana-cli
+RUN echo "Construyendo grafana-cli..." && \
+    CGO_ENABLED=1 GOOS=linux go build \
+    -ldflags="-w -s -extldflags '-static'" \
+    -tags netgo,osusergo \
+    -o bin/grafana-cli \
+    ./pkg/cmd/grafana-cli
+
+# =====================================================
+# Etapa 4: Imagen final de producción
+# =====================================================
+FROM ${FINAL_IMAGE}
+
+# Instalar dependencias mínimas del sistema
+RUN apk add --no-cache \
+    ca-certificates \
+    bash \
+    tzdata \
+    musl \
+    curl
+
+# Crear usuario y grupo grafana
+RUN addgroup -S grafana && \
+    adduser -S -G grafana grafana
+
+# Crear directorios y establecer permisos
+RUN mkdir -p \
+    /var/lib/grafana \
+    /var/log/grafana \
+    /etc/grafana \
+    /etc/grafana/provisioning/dashboards \
+    /etc/grafana/provisioning/datasources \
+    /etc/grafana/provisioning/plugins \
+    /etc/grafana/provisioning/notifiers \
+    /etc/grafana/provisioning/alerting \
+    /usr/share/grafana && \
+    chown -R grafana:grafana \
+    /var/lib/grafana \
+    /var/log/grafana \
+    /etc/grafana \
+    /usr/share/grafana
+
+# Copiar binarios desde la etapa de construcción
+COPY --from=builder /src/bin/grafana-server /usr/share/grafana/bin/
+COPY --from=builder /src/bin/grafana-cli /usr/share/grafana/bin/
+
+# Copiar archivos estáticos y de configuración
+COPY --from=builder /src/public /usr/share/grafana/public
+COPY --from=builder /src/conf /usr/share/grafana/conf
+COPY --from=builder /src/tools /usr/share/grafana/tools
+
+# Copiar archivo de configuración por defecto
+COPY --from=builder /src/conf/defaults.ini /etc/grafana/grafana.ini
+
+# Crear enlaces simbólicos para facilitar el uso
+RUN ln -s /usr/share/grafana/bin/grafana-server /usr/local/bin/grafana-server && \
+    ln -s /usr/share/grafana/bin/grafana-cli /usr/local/bin/grafana-cli
+
+# Variables de entorno
+ENV PATH=/usr/share/grafana/bin:$PATH
+ENV GF_PATHS_CONFIG=/etc/grafana/grafana.ini
+ENV GF_PATHS_DATA=/var/lib/grafana
+ENV GF_PATHS_HOME=/usr/share/grafana
+ENV GF_PATHS_LOGS=/var/log/grafana
+ENV GF_PATHS_PLUGINS=/var/lib/grafana/plugins
+ENV GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+
+# Configuraciones específicas de Sponzo
+ENV GF_SERVER_ROOT_URL=http://localhost:3001
+ENV GF_SECURITY_ADMIN_USER=admin
+ENV GF_SECURITY_ADMIN_PASSWORD=admin
+ENV GF_USERS_ALLOW_SIGN_UP=false
+ENV GF_ANALYTICS_REPORTING_ENABLED=false
+ENV GF_ANALYTICS_CHECK_FOR_UPDATES=false
+ENV GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES=false
+
+# Puertos
+EXPOSE 3000
+
+# Cambiar al usuario grafana
+USER grafana
+
+# Verificar que los binarios funcionen
+RUN /usr/share/grafana/bin/grafana-server -v
+
+# Metadatos de la imagen
+LABEL org.opencontainers.image.title="Sponzo Dashboard" \
+      org.opencontainers.image.description="White-label Grafana customized for Sponzo" \
+      org.opencontainers.image.vendor="partnia.tech" \
+      org.opencontainers.image.url="https://github.com/partnia-tech/sponzo_grafana_whitelabel" \
+      org.opencontainers.image.source="https://github.com/partnia-tech/sponzo_grafana_whitelabel" \
+      org.opencontainers.image.licenses="AGPL-3.0" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.revision="${VCS_REF}" \
+      org.opencontainers.image.version="${VERSION}"
+
+# Comando por defecto
+CMD ["/usr/share/grafana/bin/grafana-server", \
+     "--config=/etc/grafana/grafana.ini", \
+     "--pidfile=/var/run/grafana-server.pid", \
+     "--packaging=docker", \
+     "cfg:default.log.mode=console", \
+     "cfg:default.paths.data=/var/lib/grafana", \
+     "cfg:default.paths.logs=/var/log/grafana", \
+     "cfg:default.paths.plugins=/var/lib/grafana/plugins", \
+     "cfg:default.paths.provisioning=/etc/grafana/provisioning"]

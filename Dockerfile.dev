@@ -1,0 +1,81 @@
+# Dockerfile optimizado para desarrollo de Grafana
+ARG GO_IMAGE=golang:1.24.4-alpine
+ARG JS_IMAGE=node:22-alpine
+
+# Etapa de desarrollo
+FROM ${GO_IMAGE} AS dev-environment
+
+# Instalar dependencias del sistema
+RUN if grep -i -q alpine /etc/issue; then \
+  apk add --no-cache \
+  binutils-gold \
+  bash \
+  gcc g++ make git \
+  python3 \
+  build-base; \
+  fi
+
+WORKDIR /tmp/grafana
+
+# Copiar archivos de configuración de Go
+COPY go.mod go.sum ./
+COPY .bingo .bingo
+
+# Descargar dependencias de Go
+RUN go mod download
+
+# Instalar herramientas de desarrollo
+RUN go install github.com/bwplotka/bingo@latest
+
+# Configurar Node.js
+FROM ${JS_IMAGE} AS js-deps
+
+WORKDIR /tmp/grafana
+
+ENV NODE_OPTIONS=--max_old_space_size=8000
+
+# Copiar archivos de configuración de Node.js
+COPY package.json project.json nx.json yarn.lock .yarnrc.yml ./
+COPY .yarn .yarn
+
+# Instalar dependencias del sistema para Node.js
+RUN apk add --no-cache make build-base python3
+
+# Instalar dependencias de Node.js
+RUN yarn install --immutable
+
+# Etapa final de desarrollo
+FROM ${GO_IMAGE} AS development
+
+# Instalar dependencias del sistema
+RUN if grep -i -q alpine /etc/issue; then \
+  apk add --no-cache \
+  binutils-gold \
+  bash \
+  gcc g++ make git \
+  python3 \
+  build-base \
+  nodejs \
+  npm \
+  yarn; \
+  fi
+
+WORKDIR /tmp/grafana
+
+# Copiar dependencias de Go desde cache
+COPY --from=dev-environment /go/pkg/mod /go/pkg/mod
+COPY --from=dev-environment /go/bin /go/bin
+
+# Variables de entorno para desarrollo
+ENV NODE_OPTIONS=--max_old_space_size=8000
+ENV NODE_ENV=development
+ENV GF_PATHS_DATA=/var/lib/grafana
+ENV GF_PATHS_LOGS=/var/log/grafana
+ENV GF_PATHS_PLUGINS=/var/lib/grafana/plugins
+ENV GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+
+# Crear directorios necesarios
+RUN mkdir -p /var/lib/grafana /var/log/grafana /etc/grafana/provisioning
+
+# Comando por defecto para desarrollo
+CMD ["sh", "-c", "echo 'Contenedor listo para desarrollo. Monte el código fuente y ejecute comandos manualmente.'"]

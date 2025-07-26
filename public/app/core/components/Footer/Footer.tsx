@@ -6,6 +6,21 @@ import { config } from '@grafana/runtime';
 import { Icon, IconName, useStyles2 } from '@grafana/ui';
 import { t } from 'app/core/internationalization';
 
+/**
+ * Sponzo Dashboard Footer Component
+ * 
+ * This is a white-label version of Grafana, customized for Sponzo.
+ * 
+ * IMPORTANT LICENSING INFORMATION:
+ * - This project is based on Grafana, which is licensed under AGPL-3.0
+ * - This white-label version maintains compliance with Grafana's license
+ * - Source code for this customization is available at: 
+ *   https://github.com/partnia-tech/sponzo_grafana_whitelabel
+ * - Original Grafana license: https://github.com/grafana/grafana/blob/main/LICENSE
+ * 
+ * Developed by partnia.tech (https://partnia.tech)
+ */
+
 export interface FooterLink {
   target: LinkTarget;
   text: string;
@@ -36,6 +51,27 @@ export let getFooterLinks = (): FooterLink[] => {
       text: t('nav.help/community', 'Community'),
       icon: 'comments-alt',
       url: 'https://community.grafana.com/?utm_source=grafana_footer',
+    },
+    {
+      target: '_blank',
+      id: 'sponzo-source',
+      text: 'Sponzo Source Code',
+      icon: 'github',
+      url: 'https://github.com/partnia-tech/sponzo_grafana_whitelabel',
+    },
+    {
+      target: '_blank',
+      id: 'grafana-license',
+      text: 'Based on Grafana (AGPL-3.0)',
+      icon: 'document-info',
+      url: 'https://github.com/grafana/grafana/blob/main/LICENSE',
+    },
+    {
+      target: '_blank',
+      id: 'developed-by',
+      text: 'Desarrollado por partnia.tech',
+      icon: 'code-branch',
+      url: 'https://partnia.tech',
     },
   ];
 };

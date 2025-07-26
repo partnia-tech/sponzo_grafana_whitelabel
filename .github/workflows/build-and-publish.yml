@@ -1,0 +1,229 @@
+name: Build and Publish Sponzo Dashboard
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - master
+      - main
+  workflow_dispatch: # Permite ejecutar manualmente
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=Sponzo Dashboard
+            org.opencontainers.image.description=White-label Grafana customized for Sponzo
+            org.opencontainers.image.vendor=partnia.tech
+            org.opencontainers.image.url=https://github.com/partnia-tech/sponzo_grafana_whitelabel
+            org.opencontainers.image.source=https://github.com/partnia-tech/sponzo_grafana_whitelabel
+            org.opencontainers.image.licenses=AGPL-3.0
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.prod
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.spdx.json
+
+      - name: Run security scan
+        uses: anchore/scan-action@v3
+        with:
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          fail-build: false
+          severity-cutoff: high
+
+  test-image:
+    needs: build-and-publish
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: grafana
+          POSTGRES_USER: grafana
+          POSTGRES_PASSWORD: password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Test image
+        run: |
+          echo "🧪 Testing Sponzo Dashboard image..."
+          
+          # Pull the image
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          
+          # Run the container
+          docker run -d \
+            --name sponzo-test \
+            --network host \
+            -e GF_DATABASE_TYPE=postgres \
+            -e GF_DATABASE_HOST=localhost:5432 \
+            -e GF_DATABASE_NAME=grafana \
+            -e GF_DATABASE_USER=grafana \
+            -e GF_DATABASE_PASSWORD=password \
+            -e GF_DATABASE_SSL_MODE=disable \
+            -e GF_SECURITY_ADMIN_PASSWORD=test123 \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          
+          # Wait for service to be ready
+          echo "⏳ Waiting for service to be ready..."
+          timeout=60
+          while [ $timeout -gt 0 ]; do
+            if curl -f http://localhost:3000/api/health >/dev/null 2>&1; then
+              echo "✅ Service is healthy!"
+              break
+            fi
+            sleep 2
+            timeout=$((timeout-2))
+          done
+          
+          if [ $timeout -le 0 ]; then
+            echo "❌ Service failed to start"
+            docker logs sponzo-test
+            exit 1
+          fi
+          
+          # Test login page
+          echo "🔍 Testing login page..."
+          if curl -f http://localhost:3000/login | grep -q "Bienvenido a Sponzo"; then
+            echo "✅ Sponzo branding detected!"
+          else
+            echo "❌ Sponzo branding not found"
+            exit 1
+          fi
+          
+          # Cleanup
+          docker stop sponzo-test
+          docker rm sponzo-test
+          
+          echo "🎉 All tests passed!"
+
+  create-release:
+    needs: [build-and-publish, test-image]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          generate_release_notes: true
+          files: |
+            build-and-deploy.sh
+            build-and-deploy.ps1
+            SPONZO_README.md
+          body: |
+            ## 🚀 Sponzo Dashboard Release
+            
+            **Imagen Docker disponible:**
+            ```bash
+            docker pull ghcr.io/partnia-tech/sponzo_grafana_whitelabel:${{ github.ref_name }}
+            ```
+            
+            ### ✨ Características incluidas:
+            - 🎨 Branding completo de Sponzo
+            - � Animación de carga personalizada  
+            - 🔗 Footer con enlaces y atribuciones
+            - ⚖️ Cumplimiento completo de licencia AGPL-3.0
+            - 🐳 Imagen multi-arquitectura (AMD64/ARM64)
+            
+            ### � Uso rápido:
+            ```bash
+            docker run -d \
+              --name sponzo-dashboard \
+              -p 3001:3000 \
+              -e GF_SECURITY_ADMIN_PASSWORD=tu_password_segura \
+              -e GF_DATABASE_TYPE=postgres \
+              -e GF_DATABASE_HOST=tu-db:5432 \
+              -e GF_DATABASE_NAME=grafana \
+              -e GF_DATABASE_USER=grafana \
+              -e GF_DATABASE_PASSWORD=db_password \
+              -v grafana-data:/var/lib/grafana \
+              ghcr.io/partnia-tech/sponzo_grafana_whitelabel:${{ github.ref_name }}
+            ```
+            
+            ### 📚 Documentación:
+            - **Variables de entorno**: Acepta todas las variables estándar de Grafana (prefijo `GF_`)
+            - **Puertos**: Expone puerto 3000 (mapea a tu puerto preferido)
+            - **Volúmenes**: `/var/lib/grafana` para datos persistentes
+            - **Salud**: Endpoint `/api/health` para healthchecks
+            
+            Para más detalles, consulta el [README](https://github.com/partnia-tech/sponzo_grafana_whitelabel/blob/master/SPONZO_README.md).
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

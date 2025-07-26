@@ -1,0 +1,73 @@
+version: "3.8"
+
+services:
+  grafana-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+      target: development
+    container_name: grafana-dev
+    working_dir: /tmp/grafana
+    volumes:
+      - .:/tmp/grafana        # Monta todo el código para editar en vivo
+      - grafana-data:/var/lib/grafana
+      - grafana-logs:/var/log/grafana
+      - node_modules:/tmp/grafana/node_modules  # Volumen para node_modules
+    ports:
+      - "3001:3000"
+      - "3002:3001"          # Puerto adicional para desarrollo
+    environment:
+      - GF_DATABASE_TYPE=postgres
+      - GF_DATABASE_HOST=postgres:5432
+      - GF_DATABASE_NAME=grafana
+      - GF_DATABASE_USER=grafana
+      - GF_DATABASE_PASSWORD=grafana
+      - GF_DATABASE_SSL_MODE=disable
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_LOG_LEVEL=debug
+      - GF_LOG_MODE=console
+      - GF_PATHS_DATA=/var/lib/grafana
+      - GF_PATHS_LOGS=/var/log/grafana
+      - NODE_ENV=development
+      # Custom Branding Variables
+      - GF_SERVER_INSTANCE_NAME=Sponzo Analytics
+      - GF_SERVER_BRAND_NAME=Sponzo
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_CHECK_FOR_UPDATES=false
+    depends_on:
+      - postgres
+    stdin_open: true
+    tty: true
+    command: >
+      sh -c "
+        echo 'Instalando dependencias de Node.js...' &&
+        yarn install --immutable &&
+        echo 'Generando código con Wire...' &&
+        go run ./pkg/build/wire/cmd/wire/main.go gen -tags oss ./pkg/server &&
+        echo 'Construyendo frontend...' &&
+        yarn build &&
+        echo 'Construyendo backend...' &&
+        go run build.go -dev build &&
+        echo 'Iniciando Grafana...' &&
+        ./bin/grafana server
+      "
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=grafana
+      - POSTGRES_USER=grafana
+      - POSTGRES_PASSWORD=grafana
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  grafana-data:
+  grafana-logs:
+  postgres-data:
+  node_modules:

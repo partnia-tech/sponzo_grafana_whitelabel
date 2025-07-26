@@ -12,10 +12,10 @@ const step2Key = `${keyPrefix}${step2TutorialTitle.replace(' ', '-').trim().toLo
 
 export const getSteps = (): SetupStep[] => [
   {
-    heading: 'Welcome to Grafana',
-    subheading: 'The steps below will guide you to quickly finish setting up your Grafana installation.',
-    title: 'Basic',
-    info: 'The steps below will guide you to quickly finish setting up your Grafana installation.',
+    heading: 'Bienvenido a Sponzo',
+    subheading: 'Los siguientes pasos te guiarán para configurar rápidamente tu instalación de Sponzo.',
+    title: 'Básico',
+    info: 'Los siguientes pasos te guiarán para configurar rápidamente tu instalación de Sponzo.',
     done: false,
     cards: [
       {

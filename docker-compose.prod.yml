@@ -1,0 +1,87 @@
+# Docker Compose para producción - Sponzo Dashboard
+# Imagen autocontenida sin volúmenes de código fuente
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: grafana
+      POSTGRES_USER: grafana
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - grafana_network
+    restart: unless-stopped
+
+  sponzo-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: sponzo-dashboard
+    ports:
+      - "3001:3000"
+    environment:
+      # Configuración de base de datos
+      GF_DATABASE_TYPE: postgres
+      GF_DATABASE_HOST: postgres:5432
+      GF_DATABASE_NAME: grafana
+      GF_DATABASE_USER: grafana
+      GF_DATABASE_PASSWORD: password
+      GF_DATABASE_SSL_MODE: disable
+      
+      # Configuración del servidor
+      GF_SERVER_HTTP_PORT: 3000
+      GF_SERVER_ROOT_URL: http://localhost:3001
+      
+      # Seguridad
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SECURITY_SECRET_KEY: sponzo_secret_key_change_in_production
+      
+      # Desactivar analytics y updates
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      
+      # Usuarios
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_USERS_AUTO_ASSIGN_ORG: "true"
+      GF_USERS_AUTO_ASSIGN_ORG_ROLE: Viewer
+      
+      # Logs
+      GF_LOG_LEVEL: info
+      GF_LOG_MODE: console
+      
+      # Branding personalizado (si es necesario)
+      GF_SERVER_SERVE_FROM_SUB_PATH: "false"
+      
+    volumes:
+      # Solo volúmenes para datos persistentes, no código fuente
+      - grafana_data:/var/lib/grafana
+      - grafana_logs:/var/log/grafana
+    networks:
+      - grafana_network
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  postgres_data:
+    driver: local
+  grafana_data:
+    driver: local
+  grafana_logs:
+    driver: local
+
+networks:
+  grafana_network:
+    driver: bridge
