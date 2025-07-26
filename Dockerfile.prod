@@ -22,15 +22,20 @@ RUN apk add --no-cache \
     binutils-gold \
     bash \
     gcc g++ make git \
-    python3 \
+    python3 py3-setuptools \
     build-base \
     nodejs \
     npm \
-    yarn
+    yarn \
+    libc6-compat \
+    libstdc++
 
 # Variables de entorno para construcción
 ENV NODE_OPTIONS=--max_old_space_size=8000
 ENV NODE_ENV=production
+ENV PYTHON=/usr/bin/python3
+ENV npm_config_build_from_source=true
+ENV npm_config_cache=/tmp/.npm
 
 # Copiar todo el código fuente primero (necesario para workspaces de yarn)
 COPY . .
@@ -43,7 +48,9 @@ RUN go install github.com/bwplotka/bingo@latest
 RUN go install github.com/google/wire/cmd/wire@latest
 
 # Instalar dependencias de Node.js (ahora con todos los workspaces disponibles)
-RUN yarn install --immutable
+# Usar --network-timeout para manejar timeouts en ARM64 y --ignore-scripts para evitar problemas con tree-sitter
+RUN yarn install --immutable --network-timeout 300000 --ignore-scripts || \
+    yarn install --immutable --network-timeout 600000 --ignore-scripts
 
 # Generar código con Wire
 RUN echo "Generando código con Wire..." && \
