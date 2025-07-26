@@ -40,13 +40,14 @@ RUN go mod download
 
 # Instalar herramientas de desarrollo
 RUN go install github.com/bwplotka/bingo@latest
+RUN go install github.com/google/wire/cmd/wire@latest
 
 # Instalar dependencias de Node.js (ahora con todos los workspaces disponibles)
 RUN yarn install --immutable
 
 # Generar código con Wire
 RUN echo "Generando código con Wire..." && \
-    /go/bin/wire gen -tags oss ./pkg/server
+    wire gen -tags oss ./pkg/server
 
 # Construir el frontend
 RUN echo "Construyendo frontend..." && \
