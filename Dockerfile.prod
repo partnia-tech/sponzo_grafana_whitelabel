@@ -48,9 +48,9 @@ RUN go install github.com/bwplotka/bingo@latest
 RUN go install github.com/google/wire/cmd/wire@latest
 
 # Instalar dependencias de Node.js (ahora con todos los workspaces disponibles)
-# Usar --network-timeout para manejar timeouts en ARM64 y --ignore-scripts para evitar problemas con tree-sitter
-RUN yarn install --immutable --network-timeout 300000 --ignore-scripts || \
-    yarn install --immutable --network-timeout 600000 --ignore-scripts
+# Usar --mode skip-build para evitar problemas con tree-sitter en Yarn 4
+RUN yarn install --immutable --network-timeout 300000 --mode skip-build || \
+    yarn install --immutable --network-timeout 600000 --mode skip-build
 
 # Generar código con Wire
 RUN echo "Generando código con Wire..." && \
