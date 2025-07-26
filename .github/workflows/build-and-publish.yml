@@ -3,13 +3,11 @@ name: Build and Publish Sponzo Dashboard
 on:
   push:
     branches:
-      - master
       - main
     tags:
       - 'v*'
   pull_request:
     branches:
-      - master
       - main
   workflow_dispatch: # Permite ejecutar manualmente
 
@@ -224,6 +222,6 @@ jobs:
             - **Volúmenes**: `/var/lib/grafana` para datos persistentes
             - **Salud**: Endpoint `/api/health` para healthchecks
             
-            Para más detalles, consulta el [README](https://github.com/partnia-tech/sponzo_grafana_whitelabel/blob/master/SPONZO_README.md).
+            Para más detalles, consulta el [README](https://github.com/partnia-tech/sponzo_grafana_whitelabel/blob/main/SPONZO_README.md).
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
