@@ -32,11 +32,8 @@ RUN apk add --no-cache \
 ENV NODE_OPTIONS=--max_old_space_size=8000
 ENV NODE_ENV=production
 
-# Copiar archivos de configuración
-COPY go.mod go.sum ./
-COPY package.json project.json nx.json yarn.lock .yarnrc.yml ./
-COPY .bingo .bingo
-COPY .yarn .yarn
+# Copiar todo el código fuente primero (necesario para workspaces de yarn)
+COPY . .
 
 # Descargar dependencias de Go
 RUN go mod download
@@ -44,11 +41,8 @@ RUN go mod download
 # Instalar herramientas de desarrollo
 RUN go install github.com/bwplotka/bingo@latest
 
-# Instalar dependencias de Node.js (usando el mismo comando que funciona en dev)
+# Instalar dependencias de Node.js (ahora con todos los workspaces disponibles)
 RUN yarn install --immutable
-
-# Copiar todo el código fuente
-COPY . .
 
 # Generar código con Wire
 RUN echo "Generando código con Wire..." && \
