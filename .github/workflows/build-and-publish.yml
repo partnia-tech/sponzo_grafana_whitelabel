@@ -89,7 +89,7 @@ jobs:
           path: sbom.spdx.json
 
       - name: Run security scan
-        uses: anchore/scan-action@v3
+        uses: anchore/scan-action@v6
         with:
           image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           fail-build: false
